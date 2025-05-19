@@ -66,6 +66,7 @@
     "idb-keyval": "^6.2.1",
     "immer": "^10.1.1",
     "js-cookie": "^3.0.5",
+    "js-yaml": "^4.1.0",
     "lucide-react": "^0.507.0",
     "maplibre-gl": "5.4.0",
     "react": "^19.1.0",

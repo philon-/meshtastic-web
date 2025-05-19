@@ -11,6 +11,7 @@ import { UnsafeRolesDialog } from "@components/Dialog/UnsafeRolesDialog/UnsafeRo
 import { RefreshKeysDialog } from "@components/Dialog/RefreshKeysDialog/RefreshKeysDialog.tsx";
 import { RebootOTADialog } from "@components/Dialog/RebootOTADialog.tsx";
 import { DeleteMessagesDialog } from "@components/Dialog/DeleteMessagesDialog/DeleteMessagesDialog.tsx";
+import { ImportExportConfigDialog } from "@components/Dialog/ImportExportConfigDialog.tsx";
 
 export const DialogManager = () => {
   const { channels, config, dialog, setDialogOpen } = useDevice();
@@ -89,6 +90,12 @@ export const DialogManager = () => {
         open={dialog.deleteMessages}
         onOpenChange={(open) => {
           setDialogOpen("deleteMessages", open);
+        }}
+      />
+      <ImportExportConfigDialog
+        open={dialog.importExportConfig}
+        onOpenChange={(open) => {
+          setDialogOpen("importExportConfig", open);
         }}
       />
     </>

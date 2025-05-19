@@ -7,11 +7,18 @@ import { SidebarButton } from "../../components/UI/Sidebar/SidebarButton.tsx";
 import { useToast } from "@core/hooks/useToast.ts";
 import { DeviceConfig } from "@pages/Config/DeviceConfig.tsx";
 import { ModuleConfig } from "@pages/Config/ModuleConfig.tsx";
-import { BoxesIcon, SaveIcon, SaveOff, SettingsIcon } from "lucide-react";
+import {
+  BoxesIcon,
+  ImportIcon,
+  SaveIcon,
+  SaveOff,
+  SettingsIcon,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 const ConfigPage = () => {
-  const { workingConfig, workingModuleConfig, connection } = useDevice();
+  const { workingConfig, workingModuleConfig, connection, setDialogOpen } =
+    useDevice();
   const { hasErrors } = useAppStore();
   const [activeConfigSection, setActiveConfigSection] = useState<
     "device" | "module"
@@ -98,6 +105,13 @@ const ConfigPage = () => {
           ? "Radio Config"
           : "Module Config"}
         actions={[
+          {
+            key: "importExportConfig",
+            icon: ImportIcon,
+            onClick() {
+              setDialogOpen("importExportConfig", true);
+            },
+          },
           {
             key: "save",
             icon: isError ? SaveOff : SaveIcon,
