@@ -11,7 +11,7 @@ import { useImportExportConfig } from "@core/hooks/useImportExportConfig.ts";
 import { useDevice } from "@core/stores/deviceStore.ts";
 import { Button } from "@components/UI/Button.tsx";
 import { DownloadIcon } from "lucide-react";
-import { useCallback } from "react";
+import { type ChangeEvent, useCallback } from "react";
 
 export interface ImportExportConfigDialogProps {
   open: boolean;
@@ -22,11 +22,11 @@ export const ImportExportConfigDialog = ({
   open,
   onOpenChange,
 }: ImportExportConfigDialogProps) => {
-  const { getYAMLConfig } = useImportExportConfig();
-  const { getMyNode, config, moduleConfig } = useDevice();
+  const { getYAMLConfig, setYAMLConfig } = useImportExportConfig();
+  const { getMyNode } = useDevice();
 
   const myNode = getMyNode();
-  const YAMLString = getYAMLConfig({ node: getMyNode(), config, moduleConfig });
+  const YAMLString = getYAMLConfig();
 
   const createDownloadYAML = useCallback(() => {
     if (!YAMLString) return;
@@ -36,13 +36,35 @@ export const ImportExportConfigDialog = ({
 
     const link = document.createElement("a");
     link.href = url;
-    link.download = `node-${myNode.num}.yaml`;
+    link.download = `node-${myNode.num}.yml`;
     link.style.display = "none";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   }, [YAMLString, myNode]);
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    if (!file.name.match(/\.(ya?ml)$/i)) {
+      console.error("Please select a .yaml or .yml file.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const yamlString = reader.result as string;
+      // now hand it off to your import hook
+      setYAMLConfig({ yamlString });
+    };
+    reader.onerror = () => {
+      console.log("Failed to read file.");
+    };
+    reader.readAsText(file);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -63,7 +85,17 @@ export const ImportExportConfigDialog = ({
             <DownloadIcon size={20} className="mr-2" />
             Download
           </Button>
+          <label>
+            Import configuration:
+            <input
+              type="file"
+              accept=".yaml,.yml"
+              onChange={handleFileChange}
+              style={{ display: "block", marginTop: 8 }}
+            />
+          </label>
         </div>
+
         <DialogFooter>
         </DialogFooter>
       </DialogContent>

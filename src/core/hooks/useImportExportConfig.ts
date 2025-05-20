@@ -1,22 +1,27 @@
-import { dump } from "js-yaml";
+import { dump, load } from "js-yaml";
 import { useCallback } from "react";
 import { Protobuf } from "@meshtastic/core";
 import { fromByteArray, toByteArray } from "base64-js";
+import { useDevice } from "@core/stores/deviceStore.ts";
 
-export interface GetYAMLConfigOptions {
-  node: Protobuf.Mesh.NodeInfo;
-  config: Protobuf.LocalOnly.LocalConfig;
-  moduleConfig: Protobuf.LocalOnly.LocalModuleConfig;
+export interface SetYAMLConfigOptions {
+  yamlString: string;
 }
 
-// deno-lint-ignore no-explicit-any
-type AnyObj = Record<string, any>;
+type UnknownObj = Record<string, unknown>;
+
+interface PartialConfig {
+  config?: Partial<Protobuf.Config.Config>;
+  module_config?: Partial<Protobuf.ModuleConfig.ModuleConfig>;
+  [key: string]: unknown; //                                                                  TODO: can be typed stricter
+}
 
 interface EnumMapping {
   predicate: (path: string[]) => boolean;
   map: Record<number, string>;
 }
-const enumMappings: EnumMapping[] = [
+
+const ENUMMAPPING: EnumMapping[] = [
   {
     predicate: (path) => path.join(".") === "config.device.role",
     map: Protobuf.Config.Config_DeviceConfig_Role,
@@ -100,60 +105,187 @@ const enumMappings: EnumMapping[] = [
   },
 ];
 
-// There are several problematic types in Protobuf.LocalOnly.LocalConfig
-// so we need to take a few extra steps before dumping the YAML
-// - All keys are Uint8Array -> base64 encode as String and prepended with 'base64:'
-// - All enums should be dumped as their key, eg. region: EU_868 and role: CLIENT
-// - config.power.powermon is bigint -> use .toString()
-// - Remove elements with keys '$typeName' and 'version'
-function deepTransform<T>(
-  input: T,
-  path: string[] = [],
-  // deno-lint-ignore no-explicit-any
-): any {
-  if (Array.isArray(input)) {
-    return input.map((v, i) => deepTransform(v, [...path, String(i)]));
-  }
+const BIGINTPATHS = new Set([
+  "config.power.powermonEnables",
+]);
 
-  if (input instanceof Uint8Array) {
-    return "base64:" + fromByteArray(input);
-  }
+const invert = (m: Record<number, string>) =>
+  Object.fromEntries(
+    Object.entries(m).map(([num, key]) => [key, Number(num)]),
+  ) as Record<string, number>;
+const REVERSE_ENUMMAPPING = ENUMMAPPING.map((em) => ({
+  ...em,
+  reverseMap: invert(em.map),
+}));
 
-  if (typeof input === "bigint") {
-    return input.toString();
-  }
+export function useImportExportConfig(): {
+  getYAMLConfig: () => string | undefined;
+  setYAMLConfig: (opts: SetYAMLConfigOptions) => boolean | undefined;
+} {
+  //const { setWorkingModuleConfig, setWorkingConfig } = useDevice();
+  const { getMyNode, config, moduleConfig } = useDevice();
+  const node = getMyNode();
 
-  if (typeof input === "number") {
-    for (const { predicate, map } of enumMappings) {
-      if (predicate(path)) {
-        const key = map[input];
-        if (key !== undefined) return key;
-      }
+  // There are several problematic types in Protobuf.LocalOnly.LocalConfig if we want
+  // to adhere to the YAML "standard" introduced by the Python CLI,
+  // so we need to take a few extra steps before dumping the YAML
+
+  // - All keys are Uint8Array -> base64 encode as String and prepended with 'base64:'
+  // - All enums should be dumped as their key, eg. 'region: EU_868' and NOT 'region: 4'
+  // - config.power.powermon is bigint -> use .toString()
+  // - Remove elements with keys '$typeName' and 'version'
+  function deepTransform(
+    input: unknown,
+    path: string[] = [],
+  ): unknown {
+    if (Array.isArray(input)) {
+      return input.map((v, i) => deepTransform(v, [...path, String(i)]));
     }
+
+    if (input instanceof Uint8Array) {
+      return "base64:" + fromByteArray(input);
+    }
+
+    if (typeof input === "bigint") {
+      return input.toString();
+    }
+
+    if (typeof input === "number") {
+      for (const { predicate, map } of ENUMMAPPING) {
+        if (predicate(path)) {
+          const key = map[input];
+          if (key !== undefined) return key;
+        }
+      }
+      return input;
+    }
+
+    if (input !== null && typeof input === "object") {
+      return Object.fromEntries(
+        Object.entries(input as UnknownObj)
+          .filter(([k]) => k !== "$typeName" && k !== "version")
+          .map(([k, v]) => {
+            const transformed = deepTransform(v, [...path, k]);
+            return [k, transformed];
+          }),
+      );
+    }
+
     return input;
   }
 
-  if (input !== null && typeof input === "object") {
-    return Object.fromEntries(
-      Object.entries(input as AnyObj)
-        .filter(([k]) => k !== "$typeName" && k !== "version")
-        .map(([k, v]) => {
-          const transformed = deepTransform(v, [...path, k]);
-          return [k, transformed];
-        }),
-    );
+  function deepReverseTransform(
+    input: unknown,
+    path: string[] = [],
+  ): unknown {
+    if (Array.isArray(input)) {
+      return input.map((v, i) => deepReverseTransform(v, [...path, String(i)]));
+    }
+
+    if (typeof input === "string" && input.startsWith("base64:")) {
+      return toByteArray(input.slice("base64:".length));
+    }
+
+    const joined = path.join(".");
+    if (typeof input === "string" && BIGINTPATHS.has(joined)) {
+      return BigInt(input);
+    }
+
+    if (typeof input === "string" || typeof input === "number") {
+      for (const { predicate, reverseMap } of REVERSE_ENUMMAPPING) {
+        if (predicate(path) && reverseMap) {
+          const maybeNum = reverseMap[input as string];
+          if (maybeNum !== undefined) return maybeNum;
+        }
+      }
+      return input;
+    }
+
+    if (input !== null && typeof input === "object") {
+      return Object.fromEntries(
+        Object.entries(input as UnknownObj)
+          .map(([k, v]) => [k, deepReverseTransform(v, [...path, k])]),
+      );
+    }
+
+    return input;
   }
 
-  return input;
-}
+  function validateByTemplate(
+    template: unknown,
+    candidate: unknown,
+    path: string[] = [],
+    errors: string[] = [],
+  ): string[] {
+    if (
+      template === null || template === undefined ||
+      path.at(-1) === "$typeName" || path.at(-1) === "version"
+    ) {
+      return errors;
+    }
 
-export function useImportExportConfig(): {
-  getYAMLConfig: (opts: GetYAMLConfigOptions) => string | undefined;
-} {
+    const templateType = Array.isArray(template)
+      ? "array"
+      : template instanceof Uint8Array
+      ? "uint8array"
+      : typeof template;
+    const candidateType = Array.isArray(candidate)
+      ? "array"
+      : candidate instanceof Uint8Array
+      ? "uint8array"
+      : typeof candidate;
+
+    const keyPath = path.join(".");
+
+    if (templateType !== candidateType) {
+      errors.push(
+        `Type mismatch at “${keyPath}”: expected ${templateType}, got ${candidateType}`,
+      );
+    }
+
+    if (Array.isArray(template) && Array.isArray(candidate)) {
+      const arrayTemplate = template;
+      const arrayCandidate = candidate;
+      if (arrayTemplate.length !== arrayCandidate.length) {
+        errors.push(
+          `Array length mismatch at “${keyPath}”: expected ${arrayTemplate.length}, got ${arrayCandidate.length}`,
+        );
+      }
+      for (
+        let i = 0;
+        i < Math.min(arrayTemplate.length, arrayCandidate.length);
+        i++
+      ) {
+        validateByTemplate(arrayTemplate[i], arrayCandidate[i], [
+          ...path,
+          String(i),
+        ], errors);
+      }
+    }
+    if (templateType === "object" && typeof candidate === "object") {
+      Object.entries(candidate as UnknownObj).forEach(
+        ([key, candVal]) => {
+          const subTemplate = (template as UnknownObj)?.[key];
+          if (subTemplate === undefined) {
+            errors.push(
+              `Unknown key “${keyPath}.${key}”`,
+            );
+          } else {
+            validateByTemplate(
+              subTemplate,
+              candVal,
+              [...path, key],
+              errors,
+            );
+          }
+        },
+      );
+    }
+    return errors;
+  }
+
   const getYAMLConfig = useCallback(
-    (
-      { node, config, moduleConfig }: GetYAMLConfigOptions,
-    ): string | undefined => {
+    (): string | undefined => {
       if (!node) return;
 
       // TODO: Channel URL
@@ -172,8 +304,59 @@ export function useImportExportConfig(): {
         module_config: moduleConfig,
       }));
     },
-    [],
+    [deepTransform, node, config, moduleConfig],
   );
 
-  return { getYAMLConfig };
+  const setYAMLConfig = useCallback(
+    (
+      { yamlString }: SetYAMLConfigOptions,
+    ): boolean | undefined => {
+      if (!yamlString) return;
+
+      try {
+        const rawConfig = load(yamlString);
+        if (!rawConfig || typeof rawConfig !== "object") {
+          console.error("YAML didn't parse into an object:", rawConfig);
+          return false;
+        }
+
+        const transformedConfig = deepReverseTransform(
+          rawConfig,
+        ) as PartialConfig;
+        if (!transformedConfig) {
+          console.error("Reverse transform failed");
+          return false;
+        }
+        const configErrors = validateByTemplate(
+          config,
+          transformedConfig.config,
+        );
+
+        const moduleConfigErrors = validateByTemplate(
+          moduleConfig,
+          transformedConfig.module_config!,
+        );
+
+        if (configErrors?.length) {
+          console.error("Config shape/type errors:", configErrors);
+          return false;
+        }
+        if (moduleConfigErrors?.length) {
+          console.error("Module Config shape/type errors:", moduleConfigErrors);
+          return false;
+        }
+
+        // TODO: Channel URL
+        // TODO: Fixed position
+
+        console.error("No errors");
+        console.error(transformedConfig);
+      } catch (e) {
+        console.error("YAML parsing failed:", e);
+        return false;
+      }
+    },
+    [deepReverseTransform, config],
+  );
+  return { getYAMLConfig, setYAMLConfig };
 }
