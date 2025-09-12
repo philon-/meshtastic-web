@@ -158,7 +158,7 @@ export const NodeDetail = ({ node }: NodeDetailProps) => {
               : node.hopsAway}
           </div>
           <div>
-            {node.hopsAway === 1 ? t("unit.hops.one") : t("unit.hop.plural")}
+            {node.hopsAway === 1 ? t("unit.hop.one") : t("unit.hop.plural")}
           </div>
         </div>
         {node.position?.altitude && (
@@ -181,7 +181,7 @@ export const NodeDetail = ({ node }: NodeDetailProps) => {
       <div className="flex mt-2">
         {!!node.deviceMetrics?.channelUtilization && (
           <div className="grow">
-            <div>{t("nodeDetail.channelUtilization")}</div>
+            <div>{t("channelUtilization.short")}</div>
             <Mono>
               {node.deviceMetrics?.channelUtilization.toPrecision(3)}%
             </Mono>
@@ -189,7 +189,7 @@ export const NodeDetail = ({ node }: NodeDetailProps) => {
         )}
         {!!node.deviceMetrics?.airUtilTx && (
           <div className="grow">
-            <div>{t("nodeDetail.airTxUtilization")}</div>
+            <div>{t("airtimeUtilization.short")}</div>
             <Mono className="text-gray-500">
               {node.deviceMetrics?.airUtilTx.toPrecision(3)}%
             </Mono>

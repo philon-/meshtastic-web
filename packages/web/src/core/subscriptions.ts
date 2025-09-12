@@ -127,6 +127,10 @@ export const subscribeAll = (
     },
   );
 
+  connection.events.onNeighborInfoPacket.subscribe((neighborInfo) => {
+    device.addNeighborInfo(neighborInfo.from, neighborInfo.data);
+  });
+
   connection.events.onRoutingPacket.subscribe((routingPacket) => {
     if (routingPacket.data.variant.case === "errorReason") {
       switch (routingPacket.data.variant.value) {

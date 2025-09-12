@@ -40,6 +40,7 @@ export interface Device {
   connection?: MeshDevice;
   activeNode: number;
   waypoints: Protobuf.Mesh.Waypoint[];
+  neighborInfo: Map<number, Protobuf.Mesh.NeighborInfo>;
   pendingSettingsChanges: boolean;
   messageDraft: string;
   unreadCounts: Map<number, number>;
@@ -116,6 +117,11 @@ export interface Device {
   getClientNotification: (
     index: number,
   ) => Protobuf.Mesh.ClientNotification | undefined;
+  addNeighborInfo: (
+    nodeNum: number,
+    neighborInfo: Protobuf.Mesh.NeighborInfo,
+  ) => void;
+  getNeighborInfo: (nodeNum: number) => Protobuf.Mesh.NeighborInfo | undefined;
 }
 
 export interface DeviceState {
@@ -152,6 +158,7 @@ export const useDeviceStore = createStore<PrivateDeviceState>((set, get) => ({
           connection: undefined,
           activeNode: 0,
           waypoints: [],
+          neighborInfo: new Map(),
           dialog: {
             import: false,
             QR: false,
@@ -711,6 +718,30 @@ export const useDeviceStore = createStore<PrivateDeviceState>((set, get) => ({
               return;
             }
             return device.clientNotifications[index];
+          },
+          addNeighborInfo: (
+            nodeId: number,
+            neighborInfo: Protobuf.Mesh.NeighborInfo,
+          ) => {
+            set(
+              produce<PrivateDeviceState>((draft) => {
+                const device = draft.devices.get(id);
+                if (!device) {
+                  return;
+                }
+
+                // Replace any existing neighbor info for this nodeId
+                device.neighborInfo.set(nodeId, neighborInfo);
+              }),
+            );
+          },
+
+          getNeighborInfo: (nodeNum: number) => {
+            const device = get().devices.get(id);
+            if (!device) {
+              return;
+            }
+            return device.neighborInfo.get(nodeNum);
           },
         });
       }),
