@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 import { Layer, Source } from "react-map-gl/maplibre";
 
 const ARC_SEGMENTS = 32;
-const ARC_OFFSET = 0.03; // 1% of distance
+const ARC_OFFSET = 0.01; // 1% of distance
 const MIN_LEN = 1e-3; // meters
 
 type NeighborPlus = Protobuf.Mesh.Neighbor & {

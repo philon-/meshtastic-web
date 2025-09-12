@@ -27,10 +27,10 @@ import { Sidebar } from "@components/Sidebar.tsx";
 import { useMapFitting } from "@core/hooks/useMapFitting.ts";
 import { useDevice, useNodeDB } from "@core/stores";
 import { cn } from "@core/utils/cn.ts";
-import { toLngLat } from "@core/utils/geo.ts";
+import { hasPos, toLngLat } from "@core/utils/geo.ts";
 import type { Protobuf } from "@meshtastic/core";
 import { numberToHexUnpadded } from "@noble/curves/abstract/utils";
-import { FunnelIcon } from "lucide-react";
+import { FunnelIcon, LocateFixedIcon } from "lucide-react";
 import {
   useCallback,
   useDeferredValue,
@@ -44,7 +44,7 @@ import { type MapLayerMouseEvent, useMap } from "react-map-gl/maplibre";
 const NODEDB_DEBOUNCE_MS = 250;
 
 const MapPage = () => {
-  const { t } = useTranslation();
+  const { t } = useTranslation("map");
   const { waypoints, getNeighborInfo } = useDevice();
   const { getNode, getMyNode } = useNodeDB();
   const { nodes: validNodes } = useNodeDB(
@@ -61,6 +61,7 @@ const MapPage = () => {
   );
   const { nodeFilter, defaultFilterValues, isFilterDirty } = useFilterNode();
   const { default: map } = useMap();
+  const { focusNode } = useMapFitting(map);
 
   const hasFitBoundsOnce = useRef(false);
   const [snrHover, setSnrHover] = useState<SNRTooltipProps>();
@@ -81,14 +82,14 @@ const MapPage = () => {
     () => validNodes.filter((node) => nodeFilter(node, deferredFilterState)),
     [validNodes, deferredFilterState, nodeFilter],
   );
+
   // Map fitting
   const { fitToNodes } = useMapFitting(map);
   const getMapBounds = useCallback(() => {
-    if (hasFitBoundsOnce.current) {
-      return;
+    if (!hasFitBoundsOnce.current) {
+      fitToNodes(validNodes);
+      hasFitBoundsOnce.current = true;
     }
-    fitToNodes(validNodes);
-    hasFitBoundsOnce.current = true;
   }, [fitToNodes, validNodes]);
 
   // SNR lines
@@ -228,7 +229,25 @@ const MapPage = () => {
           isVisible={visibilityState.positionPrecision}
         />
       </BaseMap>
-      <div className="flex flex-col space-y-1 fixed top-45.5 right-2.5">
+      <div className="flex flex-col space-y-1 fixed top-35 right-2.5">
+        {myNode && hasPos(myNode?.position) && (
+          <button
+            type="button"
+            className={cn(
+              "rounded align-center",
+              "w-[29px] px-1 py-1 shadow-l outline-[2px] outline-stone-600/20",
+              "bg-stone-50 hover:bg-stone-200 dark:bg-stone-200 dark:hover:bg-stone-300 ",
+              "text-slate-600 hover:text-slate-700",
+              "dark:text-slate-600 hover:dark:text-slate-700",
+            )}
+            aria-label={t("mapMenu.locateAria")}
+            onClick={() => focusNode(myNode)}
+          >
+            {" "}
+            <LocateFixedIcon className="w-[21px]" />
+          </button>
+        )}
+
         <FilterControl
           filterState={filterState}
           defaultFilterValues={defaultFilterValues}
@@ -242,7 +261,7 @@ const MapPage = () => {
             },
             popoverTriggerClassName: cn(
               "w-[29px] px-1 py-1 rounded shadow-l outline-[2px] outline-stone-600/20 ",
-              "dark:text-slate-600 dark:hover:text-slate-700 bg-stone-50 hover:bg-stone-200 dark:bg-stone-50 dark:hover:bg-stone-200 dark:active:bg-stone-300",
+              "dark:text-slate-600 dark:hover:text-slate-700 bg-stone-50 hover:bg-stone-200 dark:bg-stone-200 dark:hover:bg-stone-300 dark:active:bg-stone-300",
               isFilterDirty(filterState)
                 ? "text-slate-100 dark:text-slate-100 bg-green-600 dark:bg-green-600 hover:bg-green-700 dark:hover:bg-green-700 hover:text-slate-200 dark:hover:text-slate-200 active:bg-green-800 dark:active:bg-green-800 outline-green-600 dark:outline-green-700"
                 : "",

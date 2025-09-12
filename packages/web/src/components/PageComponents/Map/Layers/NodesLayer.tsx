@@ -35,23 +35,29 @@ export const NodeMarkers = ({
   const { hasNodeError } = useNodeDB();
   const { focusNode } = useMapFitting(map);
 
-  const [selectedNum, setSelectedNum] = useState<number | undefined>();
+  const [selectedData, setSelectedData] = useState<
+    { num: number; offset: [number, number] } | undefined
+  >();
   const selectedNode = useMemo(
     () =>
-      selectedNum === undefined
+      selectedData === undefined
         ? undefined
-        : (filteredNodes.find((node) => node.num === selectedNum) ?? undefined),
-    [selectedNum, filteredNodes],
+        : (filteredNodes.find((node) => node.num === selectedData.num) ??
+          undefined),
+    [selectedData, filteredNodes],
   );
 
   const onMarkerClick = useCallback(
-    (num: number, e: { originalEvent: MouseEvent }) => {
+    (
+      num: number,
+      offset: [number, number],
+      e: { originalEvent: MouseEvent },
+    ) => {
       e.originalEvent?.stopPropagation();
-      setSelectedNum(num);
+      setSelectedData({ num, offset });
       const node =
-        (filteredNodes.find((node) => node.num === num) ?? myNode?.num === num)
-          ? myNode
-          : undefined;
+        filteredNodes.find((node) => node.num === num) ??
+        (myNode?.num === num ? myNode : undefined);
       console.debug(`Focusing node ${num} at click`, node);
       if (node) {
         focusNode(node);
@@ -96,7 +102,7 @@ export const NodeMarkers = ({
               setExpandedCluster(key);
               return;
             }
-            onMarkerClick(num, e);
+            onMarkerClick(num, expandedOffsets?.[i] ?? [0, 0], e);
           }}
         />,
       );
@@ -133,7 +139,8 @@ export const NodeMarkers = ({
       <SelectedNodePopup
         lng={lng}
         lat={lat}
-        onClose={() => setSelectedNum(undefined)}
+        offset={selectedData?.offset ?? [0, 0]}
+        onClose={() => setSelectedData(undefined)}
       >
         <NodeDetail node={selectedNode} />
       </SelectedNodePopup>,
@@ -151,7 +158,7 @@ export const NodeMarkers = ({
         label={myNode.user?.shortName?.toString() ?? String(myNode.num)}
         hasError={false}
         isFavorite={true}
-        onClick={onMarkerClick}
+        onClick={(num, e) => onMarkerClick(num, [0, 0], e)}
       />,
     );
   }

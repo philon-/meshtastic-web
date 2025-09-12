@@ -13,5 +13,9 @@
     "positionPrecision": "Show position precision",
     "traceroutes": "Show traceroutes",
     "waypoints": "Show waypoints"
+  },
+  "mapMenu": {
+    "locateAria": "Locate my node",
+    "layersAria": "Change map style"
   }
 }

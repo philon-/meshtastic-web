@@ -19,7 +19,7 @@ export function WaypointTool(): ReactNode {
           className={cn(
             "rounded align-center",
             "w-[29px] px-1 py-1 shadow-l outline-[2px] outline-stone-600/20",
-            "bg-stone-50 hover:bg-stone-200 dark:bg-stone-50 dark:hover:bg-stone-200 dark:active:bg-stone-300",
+            "bg-stone-50 hover:bg-stone-200 dark:bg-stone-200 dark:hover:bg-stone-300 dark:active:bg-stone-300",
             "text-slate-600 hover:text-slate-700 active:bg-slate-300",
             "dark:text-slate-600 hover:dark:text-slate-700",
           )}

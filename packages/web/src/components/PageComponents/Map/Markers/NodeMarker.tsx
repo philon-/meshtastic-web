@@ -27,6 +27,7 @@ export const NodeMarker = memo(function NodeMarker({
   const style = {
     "--dx": `${dx}px`,
     "--dy": `${dy}px`,
+    pointerEvents: "auto",
   } as React.CSSProperties;
 
   return (
@@ -34,7 +35,7 @@ export const NodeMarker = memo(function NodeMarker({
       longitude={lng}
       latitude={lat}
       anchor="bottom"
-      style={{ top: "20px" }}
+      style={{ top: "20px", pointerEvents: "none" }}
     >
       <button
         type="button"
