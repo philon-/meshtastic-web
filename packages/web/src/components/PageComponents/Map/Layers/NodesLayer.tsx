@@ -58,7 +58,6 @@ export const NodeMarkers = ({
       const node =
         filteredNodes.find((node) => node.num === num) ??
         (myNode?.num === num ? myNode : undefined);
-      console.debug(`Focusing node ${num} at click`, node);
       if (node) {
         focusNode(node);
       }

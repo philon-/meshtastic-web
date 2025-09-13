@@ -1,3 +1,5 @@
+import { Countdown } from "@app/components/generic/Countdown.tsx";
+import { Button } from "@app/components/UI/Button.tsx";
 import {
   Popover,
   PopoverContent,
@@ -5,12 +7,12 @@ import {
 } from "@components/UI/Popover.tsx";
 import { cn } from "@core/utils/cn.ts";
 import { MapPinIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export function WaypointTool(): ReactNode {
   const { t } = useTranslation("map");
-
+  const [futureDate, setFutureDate] = useState<Date | undefined>();
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -35,6 +37,15 @@ export function WaypointTool(): ReactNode {
         sideOffset={7}
       >
         TODO: Implement Map Waypoint Tool
+        <Button
+          size="sm"
+          onClick={() => {
+            setFutureDate(new Date(Date.now() + 30_000));
+          }}
+        >
+          30s timer
+        </Button>
+        <Countdown target={futureDate ?? 0} />
       </PopoverContent>
     </Popover>
   );

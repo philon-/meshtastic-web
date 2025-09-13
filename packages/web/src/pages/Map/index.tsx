@@ -1,3 +1,8 @@
+import {
+  defaultVisibilityState,
+  MapLayerTool,
+  type VisibilityState,
+} from "@app/components/PageComponents/Map/Tools/MapLayerTool";
 import { FilterControl } from "@components/generic/Filter/FilterControl.tsx";
 import {
   type FilterState,
@@ -16,12 +21,7 @@ import {
   SourceNeighborLines,
 } from "@components/PageComponents/Map/Layers/SNRLayer.tsx";
 import { Waypoint } from "@components/PageComponents/Map/Layers/WaypointLayer.tsx";
-import {
-  defaultVisibilityState,
-  MapLayerTool,
-  type VisibilityState,
-} from "@components/PageComponents/Map/MapLayerTool.tsx";
-//import { WaypointTool } from "@components/PageComponents/Map/WaypointTool.tsx";
+import { WaypointTool } from "@components/PageComponents/Map/Tools/WaypointTool.tsx";
 import { PageLayout } from "@components/PageLayout.tsx";
 import { Sidebar } from "@components/Sidebar.tsx";
 import { useMapFitting } from "@core/hooks/useMapFitting.ts";
@@ -276,7 +276,7 @@ const MapPage = () => {
           setVisibilityState={setVisibilityState}
         />
 
-        {/*<WaypointTool />*/}
+        <WaypointTool />
       </div>
     </PageLayout>
   );

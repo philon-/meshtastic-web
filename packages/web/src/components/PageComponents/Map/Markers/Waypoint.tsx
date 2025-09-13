@@ -16,7 +16,7 @@ export const Waypoint = memo(function NodeMarker({
   return (
     <Marker key={id} longitude={lng} latitude={lat} anchor="bottom">
       <div>
-        <MapPinIcon size={32} fill="yellow" />
+        <MapPinIcon fill="blue" />
       </div>
     </Marker>
   );
